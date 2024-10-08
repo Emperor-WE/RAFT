@@ -15,151 +15,206 @@
 #include "noncopyable.hpp"
 #include "utils.hpp"
 
-namespace monsoon {
-// TODO:具体实现
-// 信号量
-class Semaphore : Nonecopyable {
- public:
-  Semaphore(uint32_t count = 0);
-  ~Semaphore();
+namespace monsoon
+{
+    class Semaphore : Nonecopyable
+    {
+    public:
+        Semaphore(uint32_t count = 0);
+        ~Semaphore();
 
-  void wait();
-  void notify();
+        void wait();
+        void notify();
 
- private:
-  sem_t semaphore_;
-};
+    private:
+        sem_t semaphore_;
+    };
 
-// 局部锁类模板
-template <class T>
-struct ScopedLockImpl {
- public:
-  ScopedLockImpl(T &mutex) : m_(mutex) {
-    // std::cout << "n lock" << std::endl;
-    m_.lock();
-    isLocked_ = true;
-  }
+    /**
+     * @brief 局部锁 类模板
+     */
+    template <class T>
+    struct ScopedLockImpl
+    {
+        ScopedLockImpl(T &mutex) : m_(mutex)
+        {
+            m_.lock();
+            isLocked_ = true;
+        }
 
-  void lock() {
-    if (!isLocked_) {
-      std::cout << "lock" << std::endl;
-      m_.lock();
-      isLocked_ = true;
-    }
-  }
+        void lock()
+        {
+            if(!isLocked_)
+            {
+                std::cout << "lock" << std::endl;
+                m_.lock();
+                isLocked_ = true;
+            }
+        }
 
-  void unlock() {
-    if (isLocked_) {
-      // std::cout << "unlock" << std::endl;
-      m_.unlock();
-      isLocked_ = false;
-    }
-  }
+        void unlock()
+        {
+            if(isLocked_)
+            {
+                m_.unlock();
+                isLocked_ = false;
+            }
+        }
 
-  ~ScopedLockImpl() {
-    // std::cout << "unlock" << std::endl;
-    unlock();
-  }
+        ~ScopedLockImpl()
+        {
+            unlock();
+        }
 
- private:
-  // mutex
-  T &m_;
-  // 是否已经上锁
-  bool isLocked_;
-};
+    private:
+        T &m_;  //mutex
+        bool isLocked_; //是否已经上锁
+    };
 
-template <class T>
-struct ReadScopedLockImpl {
- public:
-  ReadScopedLockImpl(T &mutex) : mutex_(mutex) {
-    mutex_.rdlock();
-    isLocked_ = true;
-  }
-  ~ReadScopedLockImpl() { unlock(); }
-  void lock() {
-    if (!isLocked_) {
-      mutex_.rdlock();
-      isLocked_ = true;
-    }
-  }
-  void unlock() {
-    if (isLocked_) {
-      mutex_.unlock();
-      isLocked_ = false;
-    }
-  }
+    template<class T>
+    struct ReadScopedLockImpl
+    {
+    public:
+        ReadScopedLockImpl(T &mutex) : mutex_(mutex)
+        {
+            mutex_.rdlock();
+            isLocked_ = true;
+        }
 
- private:
-  /// mutex
-  T &mutex_;
-  /// 是否已上锁
-  bool isLocked_;
-};
+        ~ReadScopedLockImpl()
+        {
+            unlock();
+        }
 
-template <class T>
-struct WriteScopedLockImpl {
- public:
-  WriteScopedLockImpl(T &mutex) : mutex_(mutex) {
-    mutex_.wrlock();
-    isLocked_ = true;
-  }
+        void lock()
+        {
+            if(!isLocked_)
+            {
+                mutex_.rdlock();
+                isLocked_ = true;
+            }
+        }
 
-  ~WriteScopedLockImpl() { unlock(); }
-  void lock() {
-    if (!isLocked_) {
-      mutex_.wrlock();
-      isLocked_ = true;
-    }
-  }
-  void unlock() {
-    if (isLocked_) {
-      mutex_.unlock();
-      isLocked_ = false;
-    }
-  }
+        void unlock()
+        {
+            if(isLocked_)
+            {
+                mutex_.unlock();
+                isLocked_ = false;
+            }
+        }
 
- private:
-  /// Mutex
-  T &mutex_;
-  /// 是否已上锁
-  bool isLocked_;
-};
+    private:
+        T &mutex_;
+        bool isLocked_;
+    };
 
-class Mutex : Nonecopyable {
- public:
-  typedef ScopedLockImpl<Mutex> Lock;
+    template <class T>
+    struct WriteScopedLockImpl {
+    public:
+        WriteScopedLockImpl(T &mutex) : mutex_(mutex)
+        {
+            mutex_.wrlock();
+            isLocked_ = true;
+        }
 
-  Mutex() { CondPanic(0 == pthread_mutex_init(&m_, nullptr), "lock init success"); }
+        ~WriteScopedLockImpl() 
+        { 
+            unlock();
+        }
 
-  void lock() { CondPanic(0 == pthread_mutex_lock(&m_), "lock error"); }
+        void lock()
+        {
+            if (!isLocked_)
+            {
+                mutex_.wrlock();
+                isLocked_ = true;
+            }
+        }
 
-  void unlock() { CondPanic(0 == pthread_mutex_unlock(&m_), "unlock error"); }
+        void unlock()
+        {
+            if (isLocked_)
+            {
+                mutex_.unlock();
+                isLocked_ = false;
+            }
+        }
 
-  ~Mutex() { CondPanic(0 == pthread_mutex_destroy(&m_), "destroy lock error"); }
+    private:
+        T &mutex_;
+        bool isLocked_;
+    };
 
- private:
-  pthread_mutex_t m_;
-};
+    class Mutex : Nonecopyable
+    {
+    public:
+        typedef ScopedLockImpl<Mutex> Lock;
 
-class RWMutex : Nonecopyable {
- public:
-  // 局部读锁
-  typedef ReadScopedLockImpl<RWMutex> ReadLock;
-  // 局部写锁
-  typedef WriteScopedLockImpl<RWMutex> WriteLock;
+        Mutex()
+        {
+            CondPanic(0 == pthread_mutex_init(&m_, nullptr), "lcok init error");
+        }
 
-  RWMutex() { pthread_rwlock_init(&m_, nullptr); }
-  ~RWMutex() { pthread_rwlock_destroy(&m_); }
+        ~Mutex()
+        {
+            CondPanic(0 == pthread_mutex_destroy(&m_), "destroy lock error");
+        }
 
-  void rdlock() { pthread_rwlock_rdlock(&m_); }
+        void lock()
+        {
+            CondPanic(0 == pthread_mutex_lock(&m_), "lock error");
+        }
 
-  void wrlock() { pthread_rwlock_wrlock(&m_); }
+        void unlock()
+        {
+            CondPanic(0 == pthread_mutex_unlock(&m_), "unlock error");
+        }
 
-  void unlock() { pthread_rwlock_unlock(&m_); }
+    private:
+        pthread_mutex_t m_;
+    };
 
- private:
-  pthread_rwlock_t m_;
-};
-}  // namespace monsoon
+    class RWMutex : Nonecopyable
+    {
+    public:
+        /* 局部读写锁 */
+        typedef ReadScopedLockImpl<RWMutex> ReadLock;
+
+        /* 局部写锁 */
+        typedef WriteScopedLockImpl<RWMutex> WriteLock;
+
+        RWMutex()
+        {
+            pthread_rwlock_init(&m_, nullptr);
+        }
+
+        ~RWMutex()
+        {
+            pthread_rwlock_destroy(&m_);
+        }
+
+        void rdlock()
+        {
+            pthread_rwlock_rdlock(&m_);
+        }
+
+        void wrlock()
+        {
+            pthread_rwlock_wrlock(&m_);
+        }
+
+        void unlock()
+        {
+            pthread_rwlock_unlock(&m_);
+        }
+    
+    private:
+        pthread_rwlock_t m_;
+    };
+}
+
+
+
 
 #endif
