@@ -21,3 +21,7 @@ add_executable(test_hook test_hook.cpp)
 target_link_libraries(test_hook ${LIB_LIB})
 #add_dependencies(test_hook monsoon)
 
+# add_executable(test_thread test_thread.cpp)
+# target_link_libraries(test_thread ${LIB_LIB})
+#add_dependencies(test_hook monsoon)
+
