@@ -8,45 +8,40 @@
 - boost
 - protoc [3.21.11]
 
-**安装说明**
-
 ### 2.编译启动
-#### 使用rpc
+#### 项目编译
 ```
 mkdir bl
 cd bl
 cmake ..
 make
 ```
-之后在目录bin就有对应的可执行文件生成：
+
+#### 使用rpc
 - provider
 - consumer
 注意先运行provider，再运行consumer。
 
 #### 使用raft集群
 ```
-mkdir bl
-cd bl
-cmake..
-make
-```
-
-```
-// make sure you in bin directory ,and this has a test.conf file
 raftCoreRun -n 3 -f test.conf
 ```
 
 #### 使用kv
 在启动raft集群之后启动`callerMain`即可。
 
+## Doc
+- [x] 增加代码注释
+- [x] 增加 rpc、raft、kvServer代码图解
 
-## Docs
-
+# Code
+* 原项目KvServer层Append和Put方法均走的跳表的 insert_set_element 方法，修改Append方法为追加，若原K-V DB存在则不对原有值进行修改
+* 原rpc测试用例中IP地址和端口不一致，统一测试用例IP地址和端口
+* 移除序列化测试等代码，精简项目目录结构
 
 ## todoList
-
 - [x] 完成raft节点的集群功能
-- [ ] 去除冗余的库：muduo、boost 
-- [ ] 代码精简优化
-- [x] code format
-- [ ] 代码解读 maybe
+- [x] 去除 provider对muduo库的依赖，改为非阻塞epoll监听 + 线程池的方式实现rpc消息接收和转发。
+- [ ] raft添加线程池，用于避免线程的频繁创建和销毁
+- [ ] 协程库fiber修改为无栈协程
+- [ ] 协程库fiber修改为对称协程调度
