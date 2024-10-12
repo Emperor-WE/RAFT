@@ -3,12 +3,11 @@
 本项目为：[【代码随想录知识星球】](https://www.programmercarl.com/other/project_fenbushi.html)项目分享-基于Raft的k-v存储数据库。 
 
 ## 改进
-* 完成raft节点的集群功能
 * 去除 provider对muduo库的依赖，改为非阻塞epoll监听 + 线程池的方式实现rpc消息接收和转发。
 * 原项目KvServer层Append和Put方法均走的跳表的 insert_set_element 方法，修改Append方法为追加，若原K-V DB存在则不对原有值进行修改
 * 原rpc测试用例中IP地址和端口不一致，统一测试用例IP地址和端口
 * 移除序列化测试等代码，精简项目目录结构
-* 
+
 ## Doc
 - [x] 增加代码注释
 - [x] 增加 rpc、raft、kvServer代码图解
