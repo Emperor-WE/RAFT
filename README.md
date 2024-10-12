@@ -2,14 +2,23 @@
 
 本项目为：[【代码随想录知识星球】](https://www.programmercarl.com/other/project_fenbushi.html)项目分享-基于Raft的k-v存储数据库。 
 
-## 使用方法
+## 改进
+* 完成raft节点的集群功能
+* 去除 provider对muduo库的依赖，改为非阻塞epoll监听 + 线程池的方式实现rpc消息接收和转发。
+* 原项目KvServer层Append和Put方法均走的跳表的 insert_set_element 方法，修改Append方法为追加，若原K-V DB存在则不对原有值进行修改
+* 原rpc测试用例中IP地址和端口不一致，统一测试用例IP地址和端口
+* 移除序列化测试等代码，精简项目目录结构
+* 
+## Doc
+- [x] 增加代码注释
+- [x] 增加 rpc、raft、kvServer代码图解
 
-### 1.库准备
+## 使用方法
+1.库准备
 - boost
 - protoc [3.21.11]
 
-### 2.编译启动
-#### 项目编译
+2.编译
 ```
 mkdir bl
 cd bl
@@ -17,31 +26,20 @@ cmake ..
 make
 ```
 
-#### 使用rpc
+3.使用rpc
 - provider
 - consumer
 注意先运行provider，再运行consumer。
 
-#### 使用raft集群
+4.使用raft集群
 ```
 raftCoreRun -n 3 -f test.conf
 ```
 
-#### 使用kv
-在启动raft集群之后启动`callerMain`即可。
-
-## Doc
-- [x] 增加代码注释
-- [x] 增加 rpc、raft、kvServer代码图解
-
-# Code
-* 原项目KvServer层Append和Put方法均走的跳表的 insert_set_element 方法，修改Append方法为追加，若原K-V DB存在则不对原有值进行修改
-* 原rpc测试用例中IP地址和端口不一致，统一测试用例IP地址和端口
-* 移除序列化测试等代码，精简项目目录结构
+5.使用kv
+* 在启动raft集群之后启动`callerMain`即可。
 
 ## todoList
-- [x] 完成raft节点的集群功能
-- [x] 去除 provider对muduo库的依赖，改为非阻塞epoll监听 + 线程池的方式实现rpc消息接收和转发。
 - [ ] raft添加线程池，用于避免线程的频繁创建和销毁
 - [ ] 协程库fiber修改为无栈协程
 - [ ] 协程库fiber修改为对称协程调度
