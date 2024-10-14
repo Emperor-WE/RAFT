@@ -229,8 +229,8 @@ void Raft::applierTicker()
         m_mtx.lock();
         if (m_status == Leader)
         {
-            DPrintf("[Raft::applierTicker() - raft{%d}]  m_lastApplied{%d}   m_commitIndex{%d}", m_me, m_lastApplied,
-                    m_commitIndex);
+            //DPrintf("[Raft::applierTicker() - raft{%d}]  m_lastApplied{%d}   m_commitIndex{%d}", m_me, m_lastApplied,
+            //        m_commitIndex);
         }
         auto applyMsgs = getApplyLogs();
         m_mtx.unlock();
@@ -317,9 +317,11 @@ void Raft::doElection()
 
             // 使用匿名函数执行避免其拿到锁
 
-            std::thread t(&Raft::sendRequestVote, this, i, requestVoteArgs, requestVoteReply,
-                          votedNum); // 创建新线程并执行b函数，并传递参数
-            t.detach();
+            // std::thread t(&Raft::sendRequestVote, this, i, requestVoteArgs, requestVoteReply,
+            //               votedNum); // 创建新线程并执行b函数，并传递参数
+            boost::asio::post(m_pool, std::bind(&Raft::sendRequestVote, this, i, requestVoteArgs, requestVoteReply,
+                          votedNum));
+            //t.detach();
         }
     }
 }
@@ -330,7 +332,7 @@ void Raft::doHeartBeat()
 
     if (m_status == Leader)
     {
-        DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了且拿到mutex，开始发送AE\n", m_me);
+        //DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了且拿到mutex，开始发送AE\n", m_me);
         auto appendNums = std::make_shared<int>(1); // 正确返回的节点的数量
 
         // 对Follower（除了自己外的所有节点发送AE）
@@ -342,7 +344,7 @@ void Raft::doHeartBeat()
             {
                 continue;
             }
-            DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了 index:{%d}\n", m_me, i);
+            //DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了 index:{%d}\n", m_me, i);
             // TODO m_nextIndex 初始化为0，不会导致这里中断吗
             myAssert(m_nextIndex[i] >= 1, format("rf.nextIndex[%d] = {%d}", i, m_nextIndex[i]));
             // 日志压缩加入后要判断是发送快照还是发送AE
@@ -352,8 +354,9 @@ void Raft::doHeartBeat()
                 //  rf.lastSnapshotIncludeIndex{%v},so leaderSendSnapShot", rf.me, i, rf.nextIndex[i],
                 //  rf.lastSnapshotIncludeIndex)
                 // 改发送的日志已经被做成快照，必须发送快照了
-                std::thread t(&Raft::leaderSendSnapShot, this, i); // 创建新线程并执行b函数，并传递参数
-                t.detach();
+                // std::thread t(&Raft::leaderSendSnapShot, this, i); // 创建新线程并执行b函数，并传递参数
+                // t.detach();
+                boost::asio::post(m_pool, std::bind(&Raft::leaderSendSnapShot, this, i));
                 continue;
             }
             // 发送心跳，构造发送值
@@ -398,9 +401,11 @@ void Raft::doHeartBeat()
             // TODO 这里为什么要设置为 Disconnected
             appendEntriesReply->set_appstate(Disconnected);
 
-            std::thread t(&Raft::sendAppendEntries, this, i, appendEntriesArgs, appendEntriesReply,
-                          appendNums); // 创建新线程并执行b函数，并传递参数
-            t.detach();
+            // std::thread t(&Raft::sendAppendEntries, this, i, appendEntriesArgs, appendEntriesReply,
+            //               appendNums); // 创建新线程并执行b函数，并传递参数
+            // t.detach();
+            boost::asio::post(m_pool, std::bind(&Raft::sendAppendEntries, this, i, appendEntriesArgs, appendEntriesReply,
+                          appendNums));
         }
         m_lastResetHearBeatTime = now(); // leader发送心跳，就不是随机时间了
     }
@@ -593,8 +598,9 @@ void Raft::InstallSnapshot(const raftRpcProctoc::InstallSnapshotRequest *args,
     msg.SnapshotIndex = args->lastsnapshotincludeindex();
 
     // applyChan->Push(msg);
-    std::thread t(&Raft::pushMsgToKvServer, this, msg); // 创建新线程并执行b函数，并传递参数
-    t.detach();
+    // std::thread t(&Raft::pushMsgToKvServer, this, msg); // 创建新线程并执行b函数，并传递参数
+    // t.detach();
+    boost::asio::post(m_pool, std::bind(&Raft::pushMsgToKvServer, this, msg));
     // 看下这里能不能再优化
     //     DPrintf("[func-InstallSnapshot-rf{%v}] receive snapshot from {%v} ,LastSnapShotIncludeIndex ={%v} ", rf.me,
     //     args.LeaderId, args.LastSnapShotIncludeIndex)
@@ -1005,8 +1011,9 @@ bool Raft::sendRequestVote(int server, std::shared_ptr<raftRpcProctoc::RequestVo
             m_nextIndex[i] = lastLogIndex + 1; // 有效下标从1开始，因此要+1
             m_matchIndex[i] = 0;               // 每换一个领导都是从0开始，见fig2
         }
-        std::thread t(&Raft::doHeartBeat, this); // 马上向其他节点宣告自己就是leader
-        t.detach();
+        // std::thread t(&Raft::doHeartBeat, this); // 马上向其他节点宣告自己就是leader
+        // t.detach();
+        boost::asio::post(m_pool, std::bind(&Raft::doHeartBeat, this));
 
         persist();
     }
@@ -1253,6 +1260,7 @@ void Raft::init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::sh
 
     std::thread t3(&Raft::applierTicker, this);
     t3.detach();
+    //boost::asio::post(m_pool, std::bind(&Raft::applierTicker, this));
 
     // std::thread t(&Raft::leaderHearBeatTicker, this);
     // t.detach();
@@ -1346,4 +1354,9 @@ void Raft::Snapshot(int index, std::string snapshot)
     myAssert(m_logs.size() + m_lastSnapshotIncludeIndex == lastLogIndex,
              format("len(rf.logs){%d} + rf.lastSnapshotIncludeIndex{%d} != lastLogjInde{%d}", m_logs.size(),
                     m_lastSnapshotIncludeIndex, lastLogIndex));
+}
+
+Raft::Raft() : m_pool(6)
+{
+
 }

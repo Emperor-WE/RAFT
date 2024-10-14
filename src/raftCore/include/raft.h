@@ -12,6 +12,9 @@
 #include <thread>
 #include <vector>
 
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/post.hpp>
+
 #include "ApplyMsg.h"
 #include "Persister.h"
 #include "boost/any.hpp"
@@ -47,6 +50,8 @@ private:
     std::vector<raftRpcProctoc::LogEntry> m_logs;       // 日志条目数组，包含了状态机要执行的指令集，以及收到领导时的任期号【这两个状态所有结点都在维护】，易失
     int m_commitIndex;
     int m_lastApplied;                                  // 已经汇报给状态机（上层应用）的log 的index
+
+    boost::asio::thread_pool m_pool;                    // 线程池
 
     /* 下面两个变量是Leader节点用来维护与集群中其他节点（Follower和Candidate）日志同步状态的两个重要变量
     * 这两个状态的下标1开始，因为通常commitIndex和lastApplied从0开始，应该是一个无效的index，因此下标从1开始
@@ -178,7 +183,7 @@ public:
     /* 初始化 */
     void init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::shared_ptr<Persister> persister,
               std::shared_ptr<LockQueue<ApplyMsg>> applyCh);
-
+    Raft();
 private:
     // for persist
 
