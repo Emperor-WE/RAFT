@@ -31,7 +31,7 @@ void KvServer::ExecuteAppendOpOnKVDB(Op op)
     // }
     m_mtx.lock();
 
-    m_skipList.insert_set_element(op.Key, op.Value);
+    m_skipList.insert_element(op.Key, op.Value);
 
     // if (m_kvDB.find(op.Key) != m_kvDB.end()) {
     //     m_kvDB[op.Key] = m_kvDB[op.Key] + op.Value;
