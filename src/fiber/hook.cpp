@@ -20,7 +20,6 @@ namespace monsoon
         XX(nanosleep)      \
         XX(socket)         \
         XX(connect)        \
-        XX(accept)         \
         XX(read)           \
         XX(readv)          \
         XX(recv)           \
@@ -381,17 +380,6 @@ namespace monsoon
         int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
         {
             return monsoon::connect_with_timeout(sockfd, addr, addrlen, s_connect_timeout);
-        }
-
-        int accept(int s, struct sockaddr *addr, socklen_t *addrlen)
-        {
-            int fd = do_io(s, accept_f, "accept", READ, SO_RCVTIMEO, addr, addrlen);
-            if (fd >= 0)
-            {
-                FdMgr::GetInstance()->get(fd, true);
-            }
-
-            return fd;
         }
 
         ssize_t read(int fd, void *buf, size_t count)
